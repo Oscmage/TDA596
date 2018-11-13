@@ -29,7 +29,7 @@ class Board:
         del self.entries[id]
 
     def modify(self, id, entry):
-        self.entries[self.seq_num] = entry
+        self.entries[id] = entry
 
     def getEntries(self):
         return self.entries
