@@ -22,18 +22,26 @@ class Board:
         self.entries = {}
 
     def add(self, entry):
-        self.entries[self.seq_num] = entry
+        entry_id = self.seq_num
+        self.entries[entry_id] = entry
         self.seq_num += 1
+        return entry_id
 
     def delete(self, id):
         del self.entries[id]
+        return True
 
     def modify(self, id, entry):
         self.entries[id] = entry
+        return True
 
     def getEntries(self):
         return self.entries
 
+
+ADD = "ADD"
+MODIFY = "MODIFY"
+DELETE = "DELETE"
 
 # ------------------------------------------------------------------------------------------------------
 try:
@@ -49,11 +57,10 @@ try:
         global board, node_id
         success = False
         try:
-            board.add(element)
-            success = True
+            return board.add(element)
         except Exception as e:
             print e
-        return success
+        return -1
 
     def modify_element_in_store(entry_sequence, modified_element, is_propagated_call = False):
         global board, node_id
@@ -130,10 +137,14 @@ try:
         global board, node_id
         try:
             new_entry = request.forms.get('entry')
-            add_new_element_to_store(new_entry) # you might want to change None here
-            # you should propagate something
-            # Please use threads to avoid blocking
-            #thread = Thread(target=???,args=???)
+            id = add_new_element_to_store(new_entry)
+            if (id < 0): 
+                return False
+
+            path = '/propagate/{}/{}'.format(ADD, id)
+            t = Thread(target=propagate_to_vessels, args = (path,))
+            t.daemon = True
+            t.start()
             # you should create the thread as a deamon
             return True
         except Exception as e:
@@ -159,6 +170,8 @@ try:
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
+        print action
+        print element_id
         # todo
         pass
         
