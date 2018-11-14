@@ -12,7 +12,7 @@ import json
 import argparse
 from threading import Thread
 
-from bottle import Bottle, run, request, template
+from bottle import Bottle, run, request, template, HTTPResponse
 import requests
 
 
@@ -39,9 +39,9 @@ class Board:
         return self.entries
 
 
-ADD = "ADD"
-MODIFY = "MODIFY"
-DELETE = "DELETE"
+ADD = "add"
+MODIFY = "modify"
+DELETE = "delete"
 
 # ------------------------------------------------------------------------------------------------------
 try:
@@ -55,7 +55,6 @@ try:
     # ------------------------------------------------------------------------------------------------------
     def add_new_element_to_store(element, is_propagated_call=False):
         global board, node_id
-        success = False
         try:
             return board.add(element)
         except Exception as e:
@@ -90,7 +89,7 @@ try:
         success = False
         try:
             if 'POST' in req:
-                res = requests.post('http://{}{}'.format(vessel_ip, path), data=payload)
+                res = requests.post('http://{}{}'.format(vessel_ip, path), json=payload)
             elif 'GET' in req:
                 res = requests.get('http://{}{}'.format(vessel_ip, path))
             else:
@@ -111,6 +110,25 @@ try:
                 success = contact_vessel(vessel_ip, path, payload, req)
                 if not success:
                     print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
+
+    def propagate_to_vessels_in_thread(action, id, payload = None):
+        if (id == None):
+            return False
+
+        path = None
+        if (action == ADD):
+            path = '/propagate/{}/{}'.format(ADD, id)
+          
+        if (action == MODIFY):
+            path = '/propagate/{}/{}'.format(MODIFY, id)
+
+        if (action == DELETE):
+            path = '/propagate/{}/{}'.format(DELETE, id)
+
+        t = Thread(target=propagate_to_vessels, args = (path, payload))
+        t.daemon = True
+        t.start()
+        return True
 
 
     # ------------------------------------------------------------------------------------------------------
@@ -137,15 +155,12 @@ try:
         global board, node_id
         try:
             new_entry = request.forms.get('entry')
-            id = add_new_element_to_store(new_entry)
-            if (id < 0): 
+            element_id = add_new_element_to_store(new_entry)
+            if (element_id < 0):
                 return False
 
-            path = '/propagate/{}/{}'.format(ADD, id)
-            t = Thread(target=propagate_to_vessels, args = (path,))
-            t.daemon = True
-            t.start()
-            # you should create the thread as a deamon
+            payload = {'entry': new_entry}
+            propagate_to_vessels_in_thread(ADD, element_id, payload)
             return True
         except Exception as e:
             print e
@@ -156,24 +171,55 @@ try:
         delete_or_modify = None
         try:
             delete_or_modify = int(request.forms.get('delete'))
-        except:
-            return False
+        except Exception as e:
+            print(e)
+            
         entry = request.forms.get('entry')
         if (delete_or_modify != None and entry != None):
             if delete_or_modify == 0:
                 modify_element_in_store(element_id, entry)
-                return True
+                propagate_to_vessels_in_thread(MODIFY, element_id,  entry)
+
             if delete_or_modify == 1:
                 delete_element_from_store(element_id)
-                return True
-        return False
+                propagate_to_vessels_in_thread(DELETE, element_id)
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
-        print action
-        print element_id
-        # todo
-        pass
+        try:
+            element_id = int(element_id)
+        except Exception as e:
+            print e
+            return HTTPResponse(status=400)
+        if (action in [ADD, MODIFY]):
+            entry = None
+            try:     
+                json_dict = request.json
+                entry = json_dict.get('entry')
+
+            except Exception as e:
+                # Can't parse entry from response
+                print e
+                return HTTPResponse(status=400)
+
+            if (entry == None):
+                print "Entry none"
+
+            if (action == ADD):
+                print "Adding element"
+                add_new_element_to_store(entry)
+                return HTTPResponse(status=200)
+            if (action == MODIFY):
+                print "Modify element"
+                modify_element_in_store(element_id, entry)
+                return HTTPResponse(status=200)
+
+        if (action == DELETE): 
+            delete_element_from_store(element_id)
+            print "Delete element"
+            return HTTPResponse(status=200)
+        return HTTPResponse(status=400)
+        
         
     # ------------------------------------------------------------------------------------------------------
     # EXECUTION
