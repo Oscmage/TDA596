@@ -49,38 +49,6 @@ try:
 
     board = Board() 
 
-
-    # ------------------------------------------------------------------------------------------------------
-    # BOARD FUNCTIONS
-    # ------------------------------------------------------------------------------------------------------
-    def add_new_element_to_store(element, is_propagated_call=False):
-        global board, node_id
-        try:
-            return board.add(element)
-        except Exception as e:
-            print e
-        return -1
-
-    def modify_element_in_store(entry_sequence, modified_element, is_propagated_call = False):
-        global board, node_id
-        success = False
-        try:
-            board.modify(entry_sequence, modified_element)
-            success = True
-        except Exception as e:
-            print e
-        return success
-
-    def delete_element_from_store(entry_sequence, is_propagated_call = False):
-        global board, node_id
-        success = False
-        try:
-            board.delete(entry_sequence)
-            success = True
-        except Exception as e:
-            print e
-        return success
-
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
     # ------------------------------------------------------------------------------------------------------
@@ -116,14 +84,15 @@ try:
             return False
 
         path = None
+        base_string = '/propagate/{}/{}'
         if (action == ADD):
-            path = '/propagate/{}/{}'.format(ADD, id)
+            path = base_string.format(ADD, id)
           
         if (action == MODIFY):
-            path = '/propagate/{}/{}'.format(MODIFY, id)
+            path = base_string.format(MODIFY, id)
 
         if (action == DELETE):
-            path = '/propagate/{}/{}'.format(DELETE, id)
+            path = base_string.format(DELETE, id)
 
         t = Thread(target=propagate_to_vessels, args = (path, payload))
         t.daemon = True
@@ -155,16 +124,16 @@ try:
         global board, node_id
         try:
             new_entry = request.forms.get('entry')
-            element_id = add_new_element_to_store(new_entry)
+            element_id = board.add(new_entry)
             if (element_id < 0):
-                return False
+                return format_response(500, 'Failed to create new entry')
 
             payload = {'entry': new_entry}
             propagate_to_vessels_in_thread(ADD, element_id, payload)
-            return True
+            return format_response(200)
         except Exception as e:
             print e
-        return False
+        return format_response(400)
 
     @app.post('/board/<element_id:int>/')
     def client_action_received(element_id):
@@ -173,16 +142,24 @@ try:
             delete_or_modify = int(request.forms.get('delete'))
         except Exception as e:
             print(e)
+            return format_response(400, 'Could not parse delete status from form')
             
         entry = request.forms.get('entry')
-        if (delete_or_modify != None and entry != None):
+        if (entry == None):
+            return format_response(400, 'Form needs to contain entry')
+
+        if (delete_or_modify != None):
             if delete_or_modify == 0:
-                modify_element_in_store(element_id, entry)
-                propagate_to_vessels_in_thread(MODIFY, element_id,  entry)
+                board.modify(element_id, entry)
+                payload = {'entry': entry}
+                propagate_to_vessels_in_thread(MODIFY, element_id, payload)
+                return format_response(200)
 
             if delete_or_modify == 1:
-                delete_element_from_store(element_id)
+                board.delete(element_id)
                 propagate_to_vessels_in_thread(DELETE, element_id)
+                return format_response(200)
+        return format_response(400, 'Invalid delete status, should be either 0 or 1')
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
@@ -190,7 +167,7 @@ try:
             element_id = int(element_id)
         except Exception as e:
             print e
-            return HTTPResponse(status=400)
+            return format_response(400, 'Element id needs to be an integer')
         if (action in [ADD, MODIFY]):
             entry = None
             try:     
@@ -200,27 +177,28 @@ try:
             except Exception as e:
                 # Can't parse entry from response
                 print e
-                return HTTPResponse(status=400)
+                return format_response(400, 'Could not retrieve entry from json')
 
             if (entry == None):
-                print "Entry none"
+                print 'Entry none'
 
             if (action == ADD):
-                print "Adding element"
-                add_new_element_to_store(entry)
-                return HTTPResponse(status=200)
+                print 'Adding element'
+                board.add(entry)
+                return format_response(200)
             if (action == MODIFY):
-                print "Modify element"
-                modify_element_in_store(element_id, entry)
-                return HTTPResponse(status=200)
+                print 'Modify element'
+                board.modify(element_id, entry)
+                return format_response(200)
 
         if (action == DELETE): 
-            delete_element_from_store(element_id)
-            print "Delete element"
-            return HTTPResponse(status=200)
-        return HTTPResponse(status=400)
+            board.delete(element_id)
+            print 'Delete element'
+            return format_response(200)
+        return format_response(400, 'Not a valid action')
         
-        
+    def format_response(status_code, message = ''):
+        return HTTPResponse(status=status_code, body={'message': message})
     # ------------------------------------------------------------------------------------------------------
     # EXECUTION
     # ------------------------------------------------------------------------------------------------------
