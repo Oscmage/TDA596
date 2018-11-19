@@ -52,7 +52,7 @@ try:
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
     # ------------------------------------------------------------------------------------------------------
-    def contact_vessel(vessel_ip, path, payload=None, req='POST'):
+    def contact_vessel(vessel_id, vessel_ip, path, payload=None, req='POST'):
         # Try to contact another server (vessel) through a POST or GET, once
         success = False
         try:
@@ -68,18 +68,20 @@ try:
                 success = True
         except Exception as e:
             print e
-        return success
+        if not success:
+            print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
 
-    def propagate_to_vessels(path, payload = None, req = 'POST'):
+    def propagate_to_vessels_in_thread(path, payload = None, req = 'POST'):
         global vessel_list, node_id
 
         for vessel_id, vessel_ip in vessel_list.items():
             if int(vessel_id) != node_id: # don't propagate to yourself
-                success = contact_vessel(vessel_ip, path, payload, req)
-                if not success:
-                    print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
+                t = Thread(target=contact_vessel, args = (vessel_id, vessel_ip, path, payload, req))
+                t.daemon = True
+                t.start()
+                
 
-    def propagate_to_vessels_in_thread(action, id, payload = None):
+    def propagate_to_vessels(action, id, payload = None):
         if (id == None):
             return False
 
@@ -94,9 +96,7 @@ try:
         if (action == DELETE):
             path = base_string.format(DELETE, id)
 
-        t = Thread(target=propagate_to_vessels, args = (path, payload))
-        t.daemon = True
-        t.start()
+        propagate_to_vessels_in_thread(path, payload)
         return True
 
 
@@ -129,7 +129,7 @@ try:
                 return format_response(500, 'Failed to create new entry')
 
             payload = {'entry': new_entry}
-            propagate_to_vessels_in_thread(ADD, element_id, payload)
+            propagate_to_vessels(ADD, element_id, payload)
             return format_response(200)
         except Exception as e:
             print e
@@ -152,12 +152,12 @@ try:
             if delete_or_modify == 0:
                 board.modify(element_id, entry)
                 payload = {'entry': entry}
-                propagate_to_vessels_in_thread(MODIFY, element_id, payload)
+                propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
 
             if delete_or_modify == 1:
                 board.delete(element_id)
-                propagate_to_vessels_in_thread(DELETE, element_id)
+                propagate_to_vessels(DELETE, element_id)
                 return format_response(200)
         return format_response(400, 'Invalid delete status, should be either 0 or 1')
 
@@ -198,6 +198,8 @@ try:
         return format_response(400, 'Not a valid action')
         
     def format_response(status_code, message = ''):
+        if status_code == 200:
+            return HTTPResponse(status=200)
         return HTTPResponse(status=status_code, body={'message': message})
     # ------------------------------------------------------------------------------------------------------
     # EXECUTION
