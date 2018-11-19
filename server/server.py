@@ -17,28 +17,47 @@ import requests
 
 
 class Board:
+    '''
+    This class represents a blackboard. 
+    You can add an element, delete, modify and get all entries on the blackboard
+    '''
     def __init__(self):
         self.seq_num = 0
         self.entries = {}
 
     def add(self, entry):
+        '''
+        Adds a new element to the board and increase the seq num by one.
+        '''
         entry_id = self.seq_num
         self.entries[entry_id] = entry
         self.seq_num += 1
         return entry_id
 
     def delete(self, id):
+        '''
+        Deletes the element from entries
+        '''
         del self.entries[id]
         return True
 
     def modify(self, id, entry):
+        '''
+        Modifies the entry for the specified id.
+        '''
         self.entries[id] = entry
         return True
 
     def getEntries(self):
+        '''
+        Returns all entries
+        '''
         return self.entries
 
 
+# --------------------
+# CONSTANTS
+# -----------------
 ADD = "add"
 MODIFY = "modify"
 DELETE = "delete"
@@ -74,17 +93,21 @@ try:
     def propagate_to_vessels_in_thread(path, payload = None, req = 'POST'):
         global vessel_list, node_id
 
+        # Loop over vessels
         for vessel_id, vessel_ip in vessel_list.items():
             if int(vessel_id) != node_id: # don't propagate to yourself
+                # Start a thread for each propagation
                 t = Thread(target=contact_vessel, args = (vessel_id, vessel_ip, path, payload, req))
                 t.daemon = True
                 t.start()
                 
 
     def propagate_to_vessels(action, id, payload = None):
+        # Validate input
         if (id == None):
             return False
 
+        # Check action
         path = None
         base_string = '/propagate/{}/{}'
         if (action == ADD):
@@ -96,6 +119,11 @@ try:
         if (action == DELETE):
             path = base_string.format(DELETE, id)
 
+        # Invalid action/Not supported
+        if (path == None):
+            return False
+
+        # Propagate to all vessels in a thread for each request.
         propagate_to_vessels_in_thread(path, payload)
         return True
 
@@ -123,11 +151,14 @@ try:
         Called directly when a user is doing a POST request on /board'''
         global board, node_id
         try:
+            # Retrieve the entry from the form
             new_entry = request.forms.get('entry')
+            # Get the id from the board and make sure everything went ok.
             element_id = board.add(new_entry)
             if (element_id < 0):
                 return format_response(500, 'Failed to create new entry')
 
+            # Propagate the new entry to other vessels
             payload = {'entry': new_entry}
             propagate_to_vessels(ADD, element_id, payload)
             return format_response(200)
@@ -137,25 +168,32 @@ try:
 
     @app.post('/board/<element_id:int>/')
     def client_action_received(element_id):
+        # Try to retrieve the delete field from the form and cast to int.
         delete_or_modify = None
         try:
             delete_or_modify = int(request.forms.get('delete'))
         except Exception as e:
             print(e)
             return format_response(400, 'Could not parse delete status from form')
-            
+
+        # Try to retrieve the entry from the form.
         entry = request.forms.get('entry')
         if (entry == None):
             return format_response(400, 'Form needs to contain entry')
 
+        # Make sure we have the delete_or_modify field retrieved.
         if (delete_or_modify != None):
+            # Modify code
             if delete_or_modify == 0:
+                # Modify and propagate modify to other vessels.
                 board.modify(element_id, entry)
                 payload = {'entry': entry}
                 propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
 
+            # Delete code
             if delete_or_modify == 1:
+                # Dlete and propagate to other vessels.
                 board.delete(element_id)
                 propagate_to_vessels(DELETE, element_id)
                 return format_response(200)
@@ -163,12 +201,15 @@ try:
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
+        # Try to parse the element_id as an int. 
         try:
             element_id = int(element_id)
         except Exception as e:
             print e
             return format_response(400, 'Element id needs to be an integer')
+        # ADD or Modify action
         if (action in [ADD, MODIFY]):
+            # Try to retrieve entry from propagation
             entry = None
             try:     
                 json_dict = request.json
@@ -179,6 +220,7 @@ try:
                 print e
                 return format_response(400, 'Could not retrieve entry from json')
 
+            # Make sure we have an entry
             if (entry == None):
                 print 'Entry none'
 
@@ -191,6 +233,7 @@ try:
                 board.modify(element_id, entry)
                 return format_response(200)
 
+        # Delete action
         if (action == DELETE): 
             board.delete(element_id)
             print 'Delete element'
@@ -198,6 +241,9 @@ try:
         return format_response(400, 'Not a valid action')
         
     def format_response(status_code, message = ''):
+        '''
+        Simple function for formatting response code.
+        '''
         if status_code == 200:
             return HTTPResponse(status=200)
         return HTTPResponse(status=status_code, body={'message': message})
