@@ -11,6 +11,7 @@ import time
 import json
 import argparse
 from threading import Thread
+import random
 
 from bottle import Bottle, run, request, template, HTTPResponse
 import requests
@@ -80,6 +81,11 @@ try:
     app = Bottle()
     leader_id = 1
     board = Board()
+    rand_value = random.ranint(1, 10000)
+
+    global node_id
+    payload = {'max_value': rand_value, 'max_node_id': node_id }
+    propagate_to_next_vessel(node_id, payload)
 
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
@@ -105,6 +111,16 @@ try:
             print e
         if not success:
             print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
+
+#########
+    def propagate_to_next_vessel_in_thread(next_vessel, path, payload=None, req='POST'):
+
+        t = Thread(target=contact_vessel, args=(
+                    vessel_id, vessel_ip
+                    , path, payload, req))
+        t.daemon = True
+        t.start()
+##########
 
     def propagate_to_leader_in_thread(path, payload=None, req='POST'):
         for vessel_id, vessel_ip in vessel_list.items():
@@ -166,6 +182,30 @@ try:
         # Propagate to all vessels in a thread for each request.
         propagate_to_leader_in_thread(path, payload)
         return True
+
+################
+    def propagate_to_next_vessel(sender_id, payload=None):
+        global vessel_list, node_id
+        path = '/propagate/leader/{}'.format(sender_id)
+
+        try:
+            next_node_id = int(node_id) + 1
+            next_vessel = vessel_list.get(next_node_id)
+
+            if (next_vessel == None):
+                next_vessel = vessel_list.get(0)
+
+            print(next_vessel)
+            print(vessel_id in next_vessel.items())
+            print(vessel_ip in next_vessel.items())
+
+            propagate_to_next_vessel_in_thread(next_vessel, path, payload=None)
+            return True
+
+        except Exception as e:
+            print(e)
+            return False
+###########        
 
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
@@ -309,6 +349,45 @@ try:
 
             return format_response(200)
         return format_response(400, 'Not a valid action')
+
+
+
+######
+    @app.post('/leader/<sender_id>') # URL på request som skickas
+    def leader_propagation_received(sender_id):
+        if (sender_id): 
+
+        global node_id # node_id = me
+        max_value = None
+        max_node_id = None
+        try:
+            json_dict = request.json
+            max_value = json_dict.get('max_value')
+            max_node_id = json.get'max_node_id'
+
+        except Exception as e:
+            # Can't parse entry from response
+            print e
+            return format_response(400, 'Could not retrieve entry from json')
+        
+        if (sender_id == node_id): # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
+            leader_id = max_node_id 
+            return format_response(200) 
+        else:
+            if (rand_value > max_value):
+                max_value = rand_value
+                max_node_id = node_id
+            elif (rand_value == max_value and node_id > max_node_id):
+                max_value = rand_value
+                max_node_id = node_id
+            # else: do not change any values, leader stays the same
+
+            payload = {'max_value': max_value, 'max_node_id': max_node_id }
+            propagate_to_next_vessel(sender_id, payload)
+            return format_response(200)    
+######
+
+
 
     def format_response(status_code, message=''):
         '''
