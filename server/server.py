@@ -83,13 +83,11 @@ try:
     board = Board()
     rand_value = random.randint(1, 10000)
 
-
-    #def start_leader_election(rand_vlaue):
-     #   global node_id
-      #  payload = {'max_value': rand_value, 'max_node_id': node_id }
-       # propagate_to_next_vessel(node_id, payload)
+    def start_leader_election(node_id):
+        payload = {'max_value': rand_value, 'max_node_id': node_id, 'org_sender_id': node_id }
+        current_node_id = node_id
+        propagate_to_next_vessel(current_node_id, payload)
     
-    #sstart_leader_election(rand_value)
     
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
@@ -117,11 +115,10 @@ try:
             print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
 
 #########
-    def propagate_to_next_vessel_in_thread(next_vessel, path, payload=None, req='POST'):
+    def propagate_to_next_vessel_in_thread(next_node_id, next_node_ip, path, payload=None, req='POST'):
 
         t = Thread(target=contact_vessel, args=(
-                    vessel_id, vessel_ip
-                    , path, payload, req))
+                    next_node_id, next_node_ip, path, payload, req))
         t.daemon = True
         t.start()
 ##########
@@ -190,26 +187,23 @@ try:
 ################
     def propagate_to_next_vessel(sender_id, payload=None):
         global vessel_list, node_id
-        path = '/propagate/leader/{}'.format(sender_id)
+        path = '/propagate/asd/leader/{}'.format(node_id)
 
         try:
-            next_node_id = int(node_id) + 1
-            next_vessel = vessel_list.get(next_node_id)
+            next_node_id = int(node_id) + 1 # this node has a position in a ring and will thus always propagate to the same (next) node
+            next_node_ip = vessel_list.get(str(next_node_id))
 
-            if (next_vessel == None):
-                next_vessel = vessel_list.get(0)
+            if (next_node_ip == None):
+                next_node_ip = vessel_list.get('1')
+                next_node_id = 1
 
-            print(next_vessel)
-            print(vessel_id in next_vessel.items())
-            print(vessel_ip in next_vessel.items())
-
-            propagate_to_next_vessel_in_thread(next_vessel, path, payload=None)
+            propagate_to_next_vessel_in_thread(next_node_id, next_node_ip, path, payload)
             return True
 
         except Exception as e:
             print(e)
             return False
-###########        
+###########  
 
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
@@ -357,25 +351,29 @@ try:
 
 
 ######
-    @app.post('/leader/<sender_id>') # URL på request som skickas
+    @app.post('/propagate/asd/leader/<sender_id>') # URL på request som skickas............ the regex recognison on which app.post method to use only looks at how many "/" there are................................
     def leader_propagation_received(sender_id):
         
+        print('leader_propagation_received')
 
         global node_id # node_id = me
         max_value = None
         max_node_id = None
         try:
             json_dict = request.json
+            print(json_dict)
             max_value = json_dict.get('max_value')
             max_node_id = json_dict.get('max_node_id')
+            org_sender_id = json_dict.get('org_sender_id')
 
         except Exception as e:
             # Can't parse entry from response
             print e
             return format_response(400, 'Could not retrieve entry from json')
         
-        if (sender_id == node_id): # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
+        if (org_sender_id == node_id): # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
             leader_id = max_node_id 
+            print('--------------------------- Leader elected: {}'.format(leader_id))
             return format_response(200) 
         else:
             if (rand_value > max_value):
@@ -386,7 +384,7 @@ try:
                 max_node_id = node_id
             # else: do not change any values, leader stays the same
 
-            payload = {'max_value': max_value, 'max_node_id': max_node_id }
+            payload = {'max_value': max_value, 'max_node_id': max_node_id, 'org_sender_id': org_sender_id }
             propagate_to_next_vessel(sender_id, payload)
             return format_response(200)    
 ######
@@ -422,7 +420,12 @@ try:
             vessel_list[str(i)] = '10.1.0.{}'.format(str(i))
 
         try:
-            run(app, host=vessel_list[str(node_id)], port=port)
+            t = Thread(target=run, kwargs=dict(app=app, host=vessel_list[str(node_id)], port=port))
+            #t.daemon = True # we do not wnat to run it in the backgorund
+            t.start()
+            time.sleep(2)
+            #run(app, host=vessel_list[str(node_id)], port=port)
+            start_leader_election(node_id)
         except Exception as e:
             traceback.print_exc()
             print 'error'
