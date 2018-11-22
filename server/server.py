@@ -21,6 +21,7 @@ class Board:
     This class represents a blackboard. 
     You can add an element, delete, modify and get all entries on the blackboard
     '''
+
     def __init__(self):
         self.seq_num = 0
         self.entries = {}
@@ -65,8 +66,8 @@ DELETE = "delete"
 # ------------------------------------------------------------------------------------------------------
 try:
     app = Bottle()
-
-    board = Board() 
+    leader_id = 1
+    board = Board()
 
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
@@ -76,7 +77,8 @@ try:
         success = False
         try:
             if 'POST' in req:
-                res = requests.post('http://{}{}'.format(vessel_ip, path), json=payload)
+                res = requests.post(
+                    'http://{}{}'.format(vessel_ip, path), json=payload)
             elif 'GET' in req:
                 res = requests.get('http://{}{}'.format(vessel_ip, path))
             else:
@@ -90,19 +92,27 @@ try:
         if not success:
             print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
 
-    def propagate_to_vessels_in_thread(path, payload = None, req = 'POST'):
+    def propagate_to_leader_in_thread(path, payload=None, req='POST'):
+        for vessel_id, vessel_ip in vessel_list.items():
+            if int(vessel_id) == leader_id:
+                t = Thread(target=contact_vessel, args=(
+                    vessel_id, vessel_ip, path, payload, req))
+                t.daemon = True
+                t.start()
+
+    def propagate_to_vessels_in_thread(path, payload=None, req='POST'):
         global vessel_list, node_id
 
         # Loop over vessels
         for vessel_id, vessel_ip in vessel_list.items():
-            if int(vessel_id) != node_id: # don't propagate to yourself
+            if int(vessel_id) != node_id:  # don't propagate to yourself
                 # Start a thread for each propagation
-                t = Thread(target=contact_vessel, args = (vessel_id, vessel_ip, path, payload, req))
+                t = Thread(target=contact_vessel, args=(
+                    vessel_id, vessel_ip, path, payload, req))
                 t.daemon = True
                 t.start()
-                
 
-    def propagate_to_vessels(action, id, payload = None):
+    def propagate_to_vessels(action, id, payload=None):
         # Validate input
         if (id == None):
             return False
@@ -112,7 +122,7 @@ try:
         base_string = '/propagate/{}/{}'
         if (action == ADD):
             path = base_string.format(ADD, id)
-          
+
         if (action == MODIFY):
             path = base_string.format(MODIFY, id)
 
@@ -126,7 +136,6 @@ try:
         # Propagate to all vessels in a thread for each request.
         propagate_to_vessels_in_thread(path, payload)
         return True
-
 
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
@@ -143,8 +152,9 @@ try:
     def get_board():
         global board, node_id
         entries = board.getEntries()
-        return template('server/boardcontents_template.tpl',board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()))
+        return template('server/boardcontents_template.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()))
     # ------------------------------------------------------------------------------------------------------
+
     @app.post('/board')
     def client_add_received():
         '''Adds a new element to the board
@@ -153,21 +163,26 @@ try:
         try:
             # Retrieve the entry from the form
             new_entry = request.forms.get('entry')
-            # Get the id from the board and make sure everything went ok.
-            element_id = board.add(new_entry)
-            if (element_id < 0):
-                return format_response(500, 'Failed to create new entry')
-
-            # Propagate the new entry to other vessels
             payload = {'entry': new_entry}
-            propagate_to_vessels(ADD, element_id, payload)
-            return format_response(200)
+            if leader_id == node_id:
+                element_id = board.add(new_entry)
+                # Get the id from the board and make sure everything went ok.
+                # Propagate the new entry to none leader vessels
+                if (element_id < 0):
+                    return format_response(500, 'Failed to create new entry')
+                propagate_to_vessels(ADD, element_id, payload)
+                return format_response(200)
+            else:
+                propagate_to_leader_in_thread(ADD, element_id, payload)
+                return format_response(200)
+
         except Exception as e:
             print e
         return format_response(400)
 
     @app.post('/board/<element_id:int>/')
     def client_action_received(element_id):
+        global board, node_id
         # Try to retrieve the delete field from the form and cast to int.
         delete_or_modify = None
         try:
@@ -185,23 +200,31 @@ try:
         if (delete_or_modify != None):
             # Modify code
             if delete_or_modify == 0:
-                # Modify and propagate modify to other vessels.
-                board.modify(element_id, entry)
                 payload = {'entry': entry}
-                propagate_to_vessels(MODIFY, element_id, payload)
-                return format_response(200)
+                if leader_id == node_id:
+                    # Modify and propagate modify to other vessels.
+                    board.modify(element_id, entry)
+                    propagate_to_vessels(MODIFY, element_id, payload)
+                    return format_response(200)
+                else:
+                    propagate_to_leader_in_thread(MODIFY, element_id, payload)
+                    return format_response(200)
 
             # Delete code
             if delete_or_modify == 1:
-                # Dlete and propagate to other vessels.
-                board.delete(element_id)
-                propagate_to_vessels(DELETE, element_id)
-                return format_response(200)
+                if leader_id == node_id:
+                    # Delete and propagate to other vessels.
+                    board.delete(element_id)
+                    propagate_to_vessels(DELETE, element_id)
+                    return format_response(200)
+                else:
+                    propagate_to_leader_in_thread(DELETE, element_id)
+                    return format_response(200)
         return format_response(400, 'Invalid delete status, should be either 0 or 1')
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
-        # Try to parse the element_id as an int. 
+        # Try to parse the element_id as an int.
         try:
             element_id = int(element_id)
         except Exception as e:
@@ -211,7 +234,7 @@ try:
         if (action in [ADD, MODIFY]):
             # Try to retrieve entry from propagation
             entry = None
-            try:     
+            try:
                 json_dict = request.json
                 entry = json_dict.get('entry')
 
@@ -234,13 +257,13 @@ try:
                 return format_response(200)
 
         # Delete action
-        if (action == DELETE): 
+        if (action == DELETE):
             board.delete(element_id)
             print 'Delete element'
             return format_response(200)
         return format_response(400, 'Not a valid action')
-        
-    def format_response(status_code, message = ''):
+
+    def format_response(status_code, message=''):
         '''
         Simple function for formatting response code.
         '''
@@ -251,12 +274,16 @@ try:
     # EXECUTION
     # ------------------------------------------------------------------------------------------------------
     # Execute the code
+
     def main():
         global vessel_list, node_id, app
         port = 80
-        parser = argparse.ArgumentParser(description='Your own implementation of the distributed blackboard')
-        parser.add_argument('--id', nargs='?', dest='nid', default=1, type=int, help='This server ID')
-        parser.add_argument('--vessels', nargs='?', dest='nbv', default=1, type=int, help='The total number of vessels present in the system')
+        parser = argparse.ArgumentParser(
+            description='Your own implementation of the distributed blackboard')
+        parser.add_argument('--id', nargs='?', dest='nid',
+                            default=1, type=int, help='This server ID')
+        parser.add_argument('--vessels', nargs='?', dest='nbv', default=1,
+                            type=int, help='The total number of vessels present in the system')
         args = parser.parse_args()
         node_id = args.nid
         vessel_list = dict()
@@ -274,6 +301,6 @@ try:
     if __name__ == '__main__':
         main()
 except Exception as e:
-        traceback.print_exc()
-        while True:
-            time.sleep(60.)
+    traceback.print_exc()
+    while True:
+        time.sleep(60.)
