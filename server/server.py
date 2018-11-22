@@ -81,12 +81,16 @@ try:
     app = Bottle()
     leader_id = 1
     board = Board()
-    rand_value = random.ranint(1, 10000)
+    rand_value = random.randint(1, 10000)
 
-    global node_id
-    payload = {'max_value': rand_value, 'max_node_id': node_id }
-    propagate_to_next_vessel(node_id, payload)
 
+    #def start_leader_election(rand_vlaue):
+     #   global node_id
+      #  payload = {'max_value': rand_value, 'max_node_id': node_id }
+       # propagate_to_next_vessel(node_id, payload)
+    
+    #sstart_leader_election(rand_value)
+    
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
     # ------------------------------------------------------------------------------------------------------
@@ -355,7 +359,7 @@ try:
 ######
     @app.post('/leader/<sender_id>') # URL på request som skickas
     def leader_propagation_received(sender_id):
-        if (sender_id): 
+        
 
         global node_id # node_id = me
         max_value = None
@@ -363,7 +367,7 @@ try:
         try:
             json_dict = request.json
             max_value = json_dict.get('max_value')
-            max_node_id = json.get'max_node_id'
+            max_node_id = json_dict.get('max_node_id')
 
         except Exception as e:
             # Can't parse entry from response
