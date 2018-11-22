@@ -55,6 +55,9 @@ class Board:
         '''
         return self.entries
 
+    def get_seq_num(self):
+        return self.seq_num
+
 
 # --------------------
 # CONSTANTS
@@ -173,7 +176,8 @@ try:
                 propagate_to_vessels(ADD, element_id, payload)
                 return format_response(200)
             else:
-                propagate_to_leader_in_thread(ADD, element_id, payload)
+                propagate_to_leader_in_thread(
+                    ADD, board.get_seq_num(), payload)
                 return format_response(200)
 
         except Exception as e:
