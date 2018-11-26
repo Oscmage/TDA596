@@ -46,13 +46,12 @@ class Board:
         except Exception as e:
             print(e)
         return False
-        
 
     def modify(self, id, entry):
         '''
         Modifies the entry for the specified id.
         '''
-        try: 
+        try:
             self.entries[id] = entry
             return True
         except Exception as e:
@@ -84,14 +83,15 @@ try:
     rand_value = random.randint(1, 10000)
 
     def start_leader_election(node_id):
-        payload = {'max_value': rand_value, 'max_node_id': node_id, 'org_sender_id': node_id }
+        payload = {'max_value': rand_value,
+                   'max_node_id': node_id, 'org_sender_id': node_id}
         current_node_id = node_id
         propagate_to_next_vessel(current_node_id, payload)
-    
-    
+
     # ------------------------------------------------------------------------------------------------------
     # DISTRIBUTED COMMUNICATIONS FUNCTIONS
     # ------------------------------------------------------------------------------------------------------
+
     def contact_vessel(vessel_id, vessel_ip, path, payload=None, req='POST'):
         # Try to contact another server (vessel) through a POST or GET, once
         success = False
@@ -114,14 +114,12 @@ try:
         if not success:
             print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
 
-#########
     def propagate_to_next_vessel_in_thread(next_node_id, next_node_ip, path, payload=None, req='POST'):
 
         t = Thread(target=contact_vessel, args=(
-                    next_node_id, next_node_ip, path, payload, req))
+            next_node_id, next_node_ip, path, payload, req))
         t.daemon = True
         t.start()
-##########
 
     def propagate_to_leader_in_thread(path, payload=None, req='POST'):
         for vessel_id, vessel_ip in vessel_list.items():
@@ -159,7 +157,6 @@ try:
             return base_string.format(DELETE, id)
         return None
 
-
     def propagate_to_vessels(action, id, payload=None):
         # Validate input
         if (id == None):
@@ -184,26 +181,26 @@ try:
         propagate_to_leader_in_thread(path, payload)
         return True
 
-################
     def propagate_to_next_vessel(sender_id, payload=None):
         global vessel_list, node_id
-        path = '/propagate/asd/leader/{}'.format(node_id)
+        path = '/pick/leader/{}'.format(node_id)
 
         try:
-            next_node_id = int(node_id) + 1 # this node has a position in a ring and will thus always propagate to the same (next) node
+            # this node has a position in a ring and will thus always propagate to the same (next) node
+            next_node_id = int(node_id) + 1
             next_node_ip = vessel_list.get(str(next_node_id))
 
             if (next_node_ip == None):
                 next_node_ip = vessel_list.get('1')
                 next_node_id = 1
 
-            propagate_to_next_vessel_in_thread(next_node_id, next_node_ip, path, payload)
+            propagate_to_next_vessel_in_thread(
+                next_node_id, next_node_ip, path, payload)
             return True
 
         except Exception as e:
             print(e)
             return False
-###########  
 
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
@@ -348,15 +345,13 @@ try:
             return format_response(200)
         return format_response(400, 'Not a valid action')
 
-
-
-######
-    @app.post('/propagate/asd/leader/<sender_id>') # URL på request som skickas............ the regex recognison on which app.post method to use only looks at how many "/" there are................................
+    # URL på request som skickas............ the regex recognison on which app.post method to use only looks at how many "/" there are................................
+    @app.post('/pick/leader/<sender_id>')
     def leader_propagation_received(sender_id):
-        
+
         print('leader_propagation_received')
 
-        global node_id # node_id = me
+        global node_id  # node_id = me
         max_value = None
         max_node_id = None
         try:
@@ -370,11 +365,11 @@ try:
             # Can't parse entry from response
             print e
             return format_response(400, 'Could not retrieve entry from json')
-        
-        if (org_sender_id == node_id): # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
-            leader_id = max_node_id 
+
+        if (org_sender_id == node_id):  # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
+            leader_id = max_node_id
             print('--------------------------- Leader elected: {}'.format(leader_id))
-            return format_response(200) 
+            return format_response(200)
         else:
             if (rand_value > max_value):
                 max_value = rand_value
@@ -384,12 +379,10 @@ try:
                 max_node_id = node_id
             # else: do not change any values, leader stays the same
 
-            payload = {'max_value': max_value, 'max_node_id': max_node_id, 'org_sender_id': org_sender_id }
+            payload = {'max_value': max_value,
+                       'max_node_id': max_node_id, 'org_sender_id': org_sender_id}
             propagate_to_next_vessel(sender_id, payload)
-            return format_response(200)    
-######
-
-
+            return format_response(200)
 
     def format_response(status_code, message=''):
         '''
@@ -420,8 +413,9 @@ try:
             vessel_list[str(i)] = '10.1.0.{}'.format(str(i))
 
         try:
-            t = Thread(target=run, kwargs=dict(app=app, host=vessel_list[str(node_id)], port=port))
-            #t.daemon = True # we do not wnat to run it in the backgorund
+            t = Thread(target=run, kwargs=dict(
+                app=app, host=vessel_list[str(node_id)], port=port))
+            # t.daemon = True # we do not wnat to run it in the backgorund
             t.start()
             time.sleep(2)
             #run(app, host=vessel_list[str(node_id)], port=port)
