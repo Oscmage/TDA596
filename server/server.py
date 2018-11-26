@@ -115,7 +115,6 @@ try:
             print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
 
     def propagate_to_next_vessel_in_thread(next_node_id, next_node_ip, path, payload=None, req='POST'):
-
         t = Thread(target=contact_vessel, args=(
             next_node_id, next_node_ip, path, payload, req))
         t.daemon = True
@@ -345,7 +344,7 @@ try:
             return format_response(200)
         return format_response(400, 'Not a valid action')
 
-    # URL på request som skickas............ the regex recognison on which app.post method to use only looks at how many "/" there are................................
+    # Leader propagation received
     @app.post('/pick/leader/<sender_id>')
     def leader_propagation_received(sender_id):
 
@@ -356,7 +355,6 @@ try:
         max_node_id = None
         try:
             json_dict = request.json
-            print(json_dict)
             max_value = json_dict.get('max_value')
             max_node_id = json_dict.get('max_node_id')
             org_sender_id = json_dict.get('org_sender_id')
