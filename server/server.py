@@ -351,7 +351,7 @@ try:
 
         print('leader_propagation_received')
 
-        global node_id  # node_id = me
+        global node_id, leader_id, leader_rand  # node_id = me
         max_value = None
         max_node_id = None
         try:
