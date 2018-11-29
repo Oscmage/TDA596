@@ -79,6 +79,7 @@ DELETE = "delete"
 try:
     app = Bottle()
     leader_id = 1
+    leader_rand = 0
     board = Board()
     rand_value = random.randint(1, 10000)
 
@@ -210,7 +211,7 @@ try:
     def index():
         global board, node_id
         entries = board.getEntries()
-        return template('server/index.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()), members_name_string='YOUR NAME')
+        return template('server/index.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()), members_name_string='YOUR NAME', leader_id=leader_id, leader_rand=leader_rand)
 
     @app.get('/board')
     def get_board():
@@ -350,7 +351,7 @@ try:
 
         print('leader_propagation_received')
 
-        global node_id  # node_id = me
+        global node_id, leader_id, leader_rand  # node_id = me
         max_value = None
         max_node_id = None
         try:
@@ -366,6 +367,7 @@ try:
 
         if (org_sender_id == node_id):  # This means the leader election algo is done as the ring ciculation has returened to the sender(me), stopes the propagate
             leader_id = max_node_id
+            leader_rand = max_value
             print('--------------------------- Leader elected: {}'.format(leader_id))
             return format_response(200)
         else:
