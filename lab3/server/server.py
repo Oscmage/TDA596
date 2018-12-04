@@ -18,45 +18,88 @@ import requests
 
 class Board:
     '''
-    This class represents a blackboard. 
+    This class represents a blackboard.
     You can add an element, delete, modify and get all entries on the blackboard
     '''
 
     def __init__(self):
         self.seq_num = 0
         self.entries = {}
+        self.delete_queue = {}
+        self.modify_queue = {}
 
     def add(self, entry_id, entry, ip):
         '''
         Adds a new element to the board and increase the seq num by one.
         '''
-        entries = self.entries.get(entry_id)
-        new_dict_entry = {'entry': entry, 'ip': ip}
-        if entries:
-            entries.append(new_dict_entry)
-            entries.sort(key=lambda k: k['ip'])
-        else:
-            # First time adding an element with this entry id
-            l = [new_dict_entry]
-            entries[entry_id] = l
-        if entry_id > self.seq_num:
-            self.seq_num = entry_id + 1
+        inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip)
+        if not inDeleteQueue:
+            self.add_inner(entry_id, entry, ip)
+        # TODO (Kolla om vi är i modify queue, returnera strängen isf och adda med den strängen)
+        # TODO (Annars lägg till som vanligt)
 
+    def add_inner(self, entry_id, entry, ip):
+        entries = self.entries.get(entry_id)
+        if entries:
+            entries[ip] = entry
+        else:
+            d = {ip: entry}
+            self.entries[entry_id] = d
+        if entry_id >= self.seq_num:
+            self.seq_num = entry_id + 1
         return entry_id
+
+    def inDeleteQueue(self, entry_id, entry, ip):
+        id_dict = self.delete_queue.get(entry_id)
+        if id_dict:
+            entry = id_dict.get(ip)
+            if entry:
+                # There is a delete pending for the entry_id and ip
+                # Don't add it and remove from queue
+                del id_dict[ip]
+                return True
+        return False
 
     def delete(self, id, ip):
         '''
         Deletes the element from entries
         '''
+        # Find the dict for an id
+        entry_dict = self.entries.get(id)
+        if entry_dict:
+            # Get entry for that ip
+            entry = entry_dict.get(ip)
+            if entry:
+                # Delete entry if exists
+                del entry_dict[ip]
+            else:
+                # There is no entry, will come later
+                # Get delete set for that entry_id
+                delete_set = self.delete_queue.get(id)
+                if delete_set:
+                    # If there is an delete set for that entry_id append the ip
+                    delete_set.add(ip)
+                else:
+                    # Create a new delete set for that entry_id
+                    self.delete_queue[id] = {ip}
+        else:
+            return True
 
-        del self.entries[id]
-        return True
-
-    def modify(self, id, entry):
+    def modify(self, id, ip, entry):
         '''
         Modifies the entry for the specified id.
         '''
-        self.entries[id] = entry
+        # Get entries dict for that id
+        entry_dict = self.entries.get(id)
+        if entry_dict:
+            # Get a specific entry for an ip
+            entry = entry_dict.get(ip)
+            if entry:
+                # There is an entry for this ip, so we can modify
+                entry_dict[ip] = entry
+            else:
+                # There is no entry, might come later, add to queue
+                self.modify_queue[id] = {ip: entry}
         return True
 
     def getEntries(self):
@@ -64,12 +107,6 @@ class Board:
         Returns all entries
         '''
         return self.entries
-
-    def updateSeqNum(self, new_seq_num):
-        if self.seq_num > new_seq_num:
-            raise ValueError(
-                "New Sequence Number can't be lower than the existing one")
-        self.seq_num = new_seq_num
 
 
 # --------------------
