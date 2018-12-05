@@ -30,15 +30,24 @@ class Board:
 
     def add(self, entry_id, entry, ip):
         '''
-        Adds a new element to the board and increase the seq num by one.
+        Adds a new element to the board and increase the seq num by one. 
+        Uses some logic to check if the added element has pening delete or modifies. 
+        Also uses a inner method for actualy adding the entry to the bord.
         '''
-        inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip)
-        if not inDeleteQueue:
-            self.add_inner(entry_id, entry, ip)
+        inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip) 
+        entryFromModifyQueue = self.inModifyQueue(entry_id, entry, ip) 
+        if not inDeleteQueue: 
+            if entryFromModifyQueue:
+                self.add_inner(entry_id, entryFromModifyQueue, ip)
+            else:
+                self.add_inner(entry_id, entry, ip)
         # TODO (Kolla om vi är i modify queue, returnera strängen isf och adda med den strängen)
         # TODO (Annars lägg till som vanligt)
 
     def add_inner(self, entry_id, entry, ip):
+        '''
+        Inner add-method, does the actual adding of new elements to the board and increase the seq num by one.
+        '''
         entries = self.entries.get(entry_id)
         if entries:
             entries[ip] = entry
@@ -49,6 +58,7 @@ class Board:
             self.seq_num = entry_id + 1
         return entry_id
 
+    # Method inDeleteQueue() will return true if it WAS in the queue, it will also remove the item from the queue
     def inDeleteQueue(self, entry_id, entry, ip):
         id_dict = self.delete_queue.get(entry_id)
         if id_dict:
@@ -59,6 +69,20 @@ class Board:
                 del id_dict[ip]
                 return True
         return False
+
+    # Method inModifyQueue() will return the modified entry if it WAS in the queue, it will also remove the item from the queue
+    def inModifyQueue(self, entry_id, entry, ip):
+        id_dict = self.modify_queue.get(entry_id)
+        if id_dict:
+            entry = id_dict.get(ip)
+            if entry:
+                # There is a modify pending for the entry_id and ip
+                # return the modified and correct entry and remove from queue
+                del id_dict[ip]
+                print entry
+                return entry
+        return None
+
 
     def delete(self, id, ip):
         '''
@@ -82,8 +106,7 @@ class Board:
                 else:
                     # Create a new delete set for that entry_id
                     self.delete_queue[id] = {ip}
-        else:
-            return True
+        return True
 
     def modify(self, id, ip, entry):
         '''
