@@ -132,7 +132,12 @@ class Board:
         '''
         Returns all entries
         '''
-        return self.entries
+        sorted_by_id = sorted(self.entries.iteritems())
+        sorted_by_ip = []
+        for id_dict in sorted_by_id:
+            sorted_by_ip = sorted_by_ip + sorted(id_dict.iteritems())
+
+        return sorted_by_ip
 
     def get_seq_num(self):
         return self.seq_num
@@ -221,15 +226,14 @@ try:
     def index():
         global board, node_id
         entries = board.getEntries()
-        print(entries)
-        return template('server/index.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()), members_name_string='YOUR NAME')
+        return template('server/index.tpl', board_title='Vessel {}'.format(node_id), board_dict=entries, members_name_string='YOUR NAME')
 
     @app.get('/board')
     def get_board():
         global board, node_id
         entries = board.getEntries()
         print(entries)
-        return template('server/boardcontents_template.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()))
+        return template('server/boardcontents_template.tpl', board_title='Vessel {}'.format(node_id), board_dict=entries)
     # ------------------------------------------------------------------------------------------------------
 
     @app.post('/board')
