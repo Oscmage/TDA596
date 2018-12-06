@@ -11,34 +11,34 @@ class TestServer(unittest.TestCase):
 
 
 	def test_add(self):
-		self.assertEqual(self.board.add("a"),0)
-		self.assertEqual(self.board.add("b"),1)
-		self.assertEqual(self.board.add("c"),2)
+		self.assertEqual(self.board.add("a", 0, 10),0)
+		self.assertEqual(self.board.add("b", 1, 10),1, 10)
+		self.assertEqual(self.board.add("c", 2, 10),2, 10)
 
 	def test_delete(self):
-		self.board.add("a")
-		self.board.delete(0)
-		self.assertEqual(self.board.add("b"),1)
+		self.board.add("a", 0, 10)
+		self.board.delete(0, 10)
+		self.assertEqual(self.board.add("b", 1, 10), 1)
 		self.assertEqual(self.board.getEntries().get(1),"b")
 
 
 	def test_modify(self):
-		self.board.add("a")
-		self.board.modify(0,"b")
+		self.board.add("a", 0, 10)
+		self.board.modify(0, 10, "b")
 		self.assertEqual(self.board.getEntries().get(0),"b")
 
 	def test_getEntries(self):
-		self.board.add("a")
+		self.board.add("a", 0, 10)
 		self.assertEqual(self.board.getEntries().get(0),"a")
 
 	def test_delQueue(self):
-		self.board.delete(0)
-		self.board.add("a")
+		self.board.delete(0, 10)
+		self.board.add("a", 0, 10)
 		self.assertEqual(self.board.getEntries().get(0), None)
 
 	def test_modQueue(self):
-		self.board.modify(0,"b")
-		self.board.add("a")
+		self.board.modify(0, 10, "b")
+		self.board.add("a", 0, 10)
 		self.assertEqual(self.board.getEntries().get(0), "b")
 		self.assertEqual(self.board.getEntries().get(1), None)
 
