@@ -34,15 +34,19 @@ class Board:
         Uses some logic to check if the added element has pening delete or modifies. 
         Also uses a inner method for actualy adding the entry to the bord.
         '''
-        inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip) 
-        entryFromModifyQueue = self.inModifyQueue(entry_id, entry, ip) 
-        if not inDeleteQueue: 
-            if entryFromModifyQueue:
-                self.add_inner(entry_id, entryFromModifyQueue, ip)
+        # Check if in delete queue, if so, do nothing and remove it from the delete queue
+        inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip)
+        # If in modifyQueue
+        inModifyQueue = self.inModifyQueue(entry_id, entry, ip)
+
+        # Only consider adding element if not in delete queue
+        if not inDeleteQueue:
+            # If in modifyQueue add the modified version of the element.
+            if inModifyQueue:
+                self.add_inner(entry_id, inModifyQueue, ip)
             else:
+                # Not in modifyQueue or deleteQueue, add the element.
                 self.add_inner(entry_id, entry, ip)
-        # TODO (Kolla om vi är i modify queue, returnera strängen isf och adda med den strängen)
-        # TODO (Annars lägg till som vanligt)
 
     def add_inner(self, entry_id, entry, ip):
         '''
@@ -82,7 +86,6 @@ class Board:
                 print entry
                 return entry
         return None
-
 
     def delete(self, id, ip):
         '''
@@ -215,12 +218,14 @@ try:
     def index():
         global board, node_id
         entries = board.getEntries()
+        print(entries)
         return template('server/index.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()), members_name_string='YOUR NAME')
 
     @app.get('/board')
     def get_board():
         global board, node_id
         entries = board.getEntries()
+        print(entries)
         return template('server/boardcontents_template.tpl', board_title='Vessel {}'.format(node_id), board_dict=sorted(entries.iteritems()))
     # ------------------------------------------------------------------------------------------------------
 
@@ -232,14 +237,13 @@ try:
         try:
             # Retrieve the entry from the form
             new_entry = request.forms.get('entry')
+            id = request.forms.get('id')
             # Get the id from the board and make sure everything went ok.
-            element_id = board.add(new_entry)
-            if (element_id < 0):
-                return format_response(500, 'Failed to create new entry')
+            board.add(id, new_entry, node_id)
 
             # Propagate the new entry to other vessels
-            payload = {'entry': new_entry}
-            propagate_to_vessels(ADD, element_id, payload)
+            payload = {'entry': new_entry, 'node_id': node_id}
+            propagate_to_vessels(ADD, id, payload)
             return format_response(200)
         except Exception as e:
             print e
@@ -257,15 +261,16 @@ try:
 
         # Try to retrieve the entry from the form.
         entry = request.forms.get('entry')
-        if (entry == None):
-            return format_response(400, 'Form needs to contain entry')
+        node_id = request.forms.get('node_id')
+        if (entry == None or id == None):
+            return format_response(400, 'Form needs to contain entry and node_id')
 
         # Make sure we have the delete_or_modify field retrieved.
         if (delete_or_modify != None):
             # Modify code
             if delete_or_modify == 0:
                 # Modify and propagate modify to other vessels.
-                board.modify(element_id, entry)
+                board.add(element_id, entry, node_id)
                 payload = {'entry': entry}
                 propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
@@ -273,7 +278,7 @@ try:
             # Delete code
             if delete_or_modify == 1:
                 # Dlete and propagate to other vessels.
-                board.delete(element_id)
+                board.delete(element_id, node_id)
                 propagate_to_vessels(DELETE, element_id)
                 return format_response(200)
         return format_response(400, 'Invalid delete status, should be either 0 or 1')
@@ -305,16 +310,16 @@ try:
 
             if (action == ADD):
                 print 'Adding element'
-                board.add(entry)
+                board.add(element_id, entry, node_id)
                 return format_response(200)
             if (action == MODIFY):
                 print 'Modify element'
-                board.modify(element_id, entry)
+                board.modify(element_id, node_id, entry)
                 return format_response(200)
 
         # Delete action
         if (action == DELETE):
-            board.delete(element_id)
+            board.delete(element_id, node_id)
             print 'Delete element'
             return format_response(200)
         return format_response(400, 'Not a valid action')
