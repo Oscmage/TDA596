@@ -34,6 +34,7 @@ class Board:
         Uses some logic to check if the added element has pening delete or modifies. 
         Also uses a inner method for actualy adding the entry to the bord.
         '''
+        entry_id = int(entry_id)
         # Check if in delete queue, if so, do nothing and remove it from the delete queue
         inDeleteQueue = self.inDeleteQueue(entry_id, entry, ip)
         # If in modifyQueue
@@ -52,6 +53,7 @@ class Board:
         '''
         Inner add-method, does the actual adding of new elements to the board and increase the seq num by one.
         '''
+        entry_id = int(entry_id)
         entries = self.entries.get(entry_id)
         if entries:
             entries[ip] = entry
@@ -64,6 +66,8 @@ class Board:
 
     # Method inDeleteQueue() will return true if it WAS in the queue, it will also remove the item from the queue
     def inDeleteQueue(self, entry_id, entry, ip):
+        entry_id = int(entry_id)
+
         id_dict = self.delete_queue.get(entry_id)
         if id_dict:
             entry = id_dict.get(ip)
@@ -76,6 +80,7 @@ class Board:
 
     # Method inModifyQueue() will return the modified entry if it WAS in the queue, it will also remove the item from the queue
     def inModifyQueue(self, entry_id, entry, ip):
+        entry_id = int(entry_id)
         id_dict = self.modify_queue.get(entry_id)
         if id_dict:
             entry = id_dict.get(ip)
@@ -83,61 +88,69 @@ class Board:
                 # There is a modify pending for the entry_id and ip
                 # return the modified and correct entry and remove from queue
                 del id_dict[ip]
-                print entry
                 return entry
         return None
 
-    def delete(self, id, ip):
+    def delete(self, entry_id, ip):
         '''
         Deletes the element from entries
         '''
-        # Find the dict for an id
-        entry_dict = self.entries.get(id)
+        entry_id = int(entry_id)
+        # Find the dict for an entry_id
+        entry_dict = self.entries.get(entry_id)
         if entry_dict:
             # Get entry for that ip
             entry = entry_dict.get(ip)
             if entry:
                 # Delete entry if exists
                 del entry_dict[ip]
+                if len(entry_dict) == 0:
+                    del self.entries[entry_id]
             else:
-                # There is no entry, will come later
-                # Get delete set for that entry_id
-                delete_set = self.delete_queue.get(id)
-                if delete_set:
-                    # If there is an delete set for that entry_id append the ip
-                    delete_set.add(ip)
-                else:
-                    # Create a new delete set for that entry_id
-                    self.delete_queue[id] = {ip}
+                self.add_to_delete_queue(entry_id, ip)
+        else:
+            self.add_to_delete_queue(entry_id, ip)
         return True
 
-    def modify(self, id, ip, entry):
+    def add_to_delete_queue(self, entry_id, ip):
+        # There is no entry, will come later
+        # Get delete set for that entry_entry_id
+        delete_dict = self.delete_queue.get(entry_id)
+        if delete_dict:
+            # If there is an delete set for that entry_entry_id append the ip
+            delete_dict[ip] = True
+        else:
+            # Create a new delete set for that entry_entry_id
+            self.delete_queue[entry_id] = {ip: True}
+
+    def modify(self, entry_id, ip, entry):
         '''
-        Modifies the entry for the specified id.
+        Modifies the entry for the specified entry_id.
         '''
-        # Get entries dict for that id
-        entry_dict = self.entries.get(id)
+        entry_id = int(entry_id)
+        # Get entries dict for that entry_id
+        entry_dict = self.entries.get(entry_id)
         if entry_dict:
             # Get a specific entry for an ip
-            entry = entry_dict.get(ip)
-            if entry:
+            old_entry = entry_dict.get(ip)
+            if old_entry:
                 # There is an entry for this ip, so we can modify
                 entry_dict[ip] = entry
             else:
                 # There is no entry, might come later, add to queue
-                self.modify_queue[id] = {ip: entry}
+                self.modify_queue[entry_id] = {ip: entry}
+        else:
+            self.modify_queue[entry_id] = {ip: entry}
         return True
 
     def getEntries(self):
         '''
         Returns all entries
         '''
-        sorted_by_id = sorted(self.entries.iteritems())
-        sorted_by_ip = []
-        for id_dict in sorted_by_id:
-            sorted_by_ip = sorted_by_ip + sorted(id_dict.iteritems())
-
-        return sorted_by_ip
+        temp = {}
+        for k, v in self.entries.iteritems():
+            temp[k] = sorted(v.iteritems())
+        return sorted(temp.iteritems())
 
     def get_seq_num(self):
         return self.seq_num

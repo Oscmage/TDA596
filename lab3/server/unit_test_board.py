@@ -1,47 +1,46 @@
-import unittest 				# import pyhton standard library for unit testing 
+import unittest 				# import pyhton standard library for unit testing
 from server import Board 		# import the module we want to test
+
 
 class TestServer(unittest.TestCase):
 
-	def setUp(self):		# must be camleCased
-		self.board = Board()
+    def setUp(self):		# must be camleCased
+        self.board = Board()
 
-	def tearDown(self): 	# must be camleCased
-		pass
+    def tearDown(self): 	# must be camleCased
+        pass
 
+    def test_add(self):
+        self.board.add(0, "ip1", 1)
+        self.board.add(1, "b", 10)
+        self.board.add(2, "c", 10)
+        self.assertEqual(len(self.board.getEntries()), 3)
 
-	def test_add(self):
-		self.assertEqual(self.board.add("a", 0, 10),0)
-		self.assertEqual(self.board.add("b", 1, 10),1, 10)
-		self.assertEqual(self.board.add("c", 2, 10),2, 10)
+    def test_delete(self):
+        self.board.add(0, "a", 10)
+        self.board.delete(0, 10)
+        self.assertEqual(len(self.board.getEntries()), 0)
+        self.board.add(1, "b", 10)
+        self.board.getEntries()
+        self.assertEqual(len(self.board.getEntries()), 1)
 
-	def test_delete(self):
-		self.board.add("a", 0, 10)
-		self.board.delete(0, 10)
-		self.assertEqual(self.board.add("b", 1, 10), 1)
-		self.assertEqual(self.board.getEntries().get(1),"b")
+    def test_modify(self):
+        self.board.add(0, "a", 10)
+        self.board.add(1, "b", 10)
+        self.board.modify(0, 10, "b")
+        val = self.board.getEntries()[0][1][0][1]
+        self.assertTrue(val, 10)
 
+    def test_delQueue(self):
+        self.board.delete(0, 10)
+        self.board.add(0, "a", 10)
+        self.assertEqual(len(self.board.getEntries()), 0)
 
-	def test_modify(self):
-		self.board.add("a", 0, 10)
-		self.board.modify(0, 10, "b")
-		self.assertEqual(self.board.getEntries().get(0),"b")
-
-	def test_getEntries(self):
-		self.board.add("a", 0, 10)
-		self.assertEqual(self.board.getEntries().get(0),"a")
-
-	def test_delQueue(self):
-		self.board.delete(0, 10)
-		self.board.add("a", 0, 10)
-		self.assertEqual(self.board.getEntries().get(0), None)
-
-	def test_modQueue(self):
-		self.board.modify(0, 10, "b")
-		self.board.add("a", 0, 10)
-		self.assertEqual(self.board.getEntries().get(0), "b")
-		self.assertEqual(self.board.getEntries().get(1), None)
+    def test_modQueue(self):
+        self.board.modify(0, 10, "b")
+        self.board.add(0, "a", 10)
+        self.assertEqual(self.board.getEntries()[0][1][0][1], 'b')
 
 
 if __name__ == '__main__':
-	unittest.main()
+    unittest.main()
