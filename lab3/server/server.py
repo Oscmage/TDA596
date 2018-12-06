@@ -150,7 +150,11 @@ class Board:
         temp = {}
         for k, v in self.entries.iteritems():
             temp[k] = sorted(v.iteritems())
-        return sorted(temp.iteritems())
+        big_arr = sorted(temp.iteritems())
+        arr = []
+        for i in range(0, len(big_arr)):
+            arr.append(big_arr[i][1])
+        return arr
 
     def get_seq_num(self):
         return self.seq_num

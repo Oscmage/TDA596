@@ -14,6 +14,7 @@ class TestServer(unittest.TestCase):
         self.board.add(0, "ip1", 1)
         self.board.add(1, "b", 10)
         self.board.add(2, "c", 10)
+        print(self.board.getEntries())
         self.assertEqual(len(self.board.getEntries()), 3)
 
     def test_delete(self):
@@ -28,7 +29,7 @@ class TestServer(unittest.TestCase):
         self.board.add(0, "a", 10)
         self.board.add(1, "b", 10)
         self.board.modify(0, 10, "b")
-        val = self.board.getEntries()[0][1][0][1]
+        val = self.board.getEntries()[0][0][1]
         self.assertTrue(val, 10)
 
     def test_delQueue(self):
@@ -39,7 +40,7 @@ class TestServer(unittest.TestCase):
     def test_modQueue(self):
         self.board.modify(0, 10, "b")
         self.board.add(0, "a", 10)
-        self.assertEqual(self.board.getEntries()[0][1][0][1], 'b')
+        self.assertEqual(self.board.getEntries()[0][0][1], 'b')
 
 
 if __name__ == '__main__':
