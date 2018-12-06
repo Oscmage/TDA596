@@ -134,6 +134,9 @@ class Board:
         '''
         return self.entries
 
+    def get_seq_num(self):
+        return self.seq_num
+
 
 # --------------------
 # CONSTANTS
@@ -237,8 +240,8 @@ try:
         try:
             # Retrieve the entry from the form
             new_entry = request.forms.get('entry')
-            id = request.forms.get('id')
             # Get the id from the board and make sure everything went ok.
+            id = board.get_seq_num()
             board.add(id, new_entry, node_id)
 
             # Propagate the new entry to other vessels
@@ -262,6 +265,7 @@ try:
         # Try to retrieve the entry from the form.
         entry = request.forms.get('entry')
         node_id = request.forms.get('node_id')
+        print (element_id)
         if (entry == None or id == None):
             return format_response(400, 'Form needs to contain entry and node_id')
 
