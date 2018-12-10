@@ -280,7 +280,7 @@ try:
         node_id = None
         try:
             delete_or_modify = int(request.forms.get('delete'))
-            node_id = request.forms.get('node_id')
+            node_id = int(request.forms.get('node_id'))
         except Exception as e:
             print(e)
             return format_response(400, 'Could not parse delete status from form')
@@ -316,7 +316,7 @@ try:
         json_dict = request.json
         try:
             element_id = int(element_id)
-            node_id = json_dict.get('node_id')
+            node_id = int(json_dict.get('node_id'))
         except Exception as e:
             print e
             return format_response(400, 'Element id needs to be an integer')
