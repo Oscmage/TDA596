@@ -275,6 +275,7 @@ try:
 
     @app.post('/board/<element_id:int>/')
     def client_action_received(element_id):
+        global board, node_id
         # Try to retrieve the delete field from the form and cast to int.
         delete_or_modify = None
         try:
@@ -285,9 +286,7 @@ try:
 
         # Try to retrieve the entry from the form.
         entry = request.forms.get('entry')
-        node_id = request.forms.get('node_id')
-        print (element_id)
-        if (entry == None or id == None):
+        if (entry == None):
             return format_response(400, 'Form needs to contain entry and node_id')
 
         # Make sure we have the delete_or_modify field retrieved.
@@ -296,7 +295,7 @@ try:
             if delete_or_modify == 0:
                 # Modify and propagate modify to other vessels.
                 board.add(element_id, entry, node_id)
-                payload = {'entry': entry}
+                payload = {'entry': entry, 'node_id': node_id}
                 propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
 
@@ -304,19 +303,26 @@ try:
             if delete_or_modify == 1:
                 # Dlete and propagate to other vessels.
                 board.delete(element_id, node_id)
-                propagate_to_vessels(DELETE, element_id)
+                payload = {'node_id': node_id}
+                propagate_to_vessels(DELETE, element_id, payload)
                 return format_response(200)
         return format_response(400, 'Invalid delete status, should be either 0 or 1')
 
     @app.post('/propagate/<action>/<element_id>')
     def propagation_received(action, element_id):
         # Try to parse the element_id as an int.
+        node_id = None
         try:
             element_id = int(element_id)
+            node_id = json_dict.get('node_id')
         except Exception as e:
             print e
             return format_response(400, 'Element id needs to be an integer')
-        # ADD or Modify action
+
+        if (node_id == None):
+            print 'Node id is none'
+
+        # ADD or Modify actiona
         if (action in [ADD, MODIFY]):
             # Try to retrieve entry from propagation
             entry = None
