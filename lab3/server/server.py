@@ -295,7 +295,8 @@ try:
             # Modify code
             if delete_or_modify == 0:
                 # Modify and propagate modify to other vessels.
-                board.add(element_id, entry, node_id)
+            
+                board.modify(element_id, node_id, entry)
                 payload = {'entry': entry, 'node_id': node_id}
                 propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
