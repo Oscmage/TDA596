@@ -275,18 +275,19 @@ try:
 
     @app.post('/board/<element_id:int>/')
     def client_action_received(element_id):
-        global board, node_id
         # Try to retrieve the delete field from the form and cast to int.
         delete_or_modify = None
+        node_id = None
         try:
             delete_or_modify = int(request.forms.get('delete'))
+            node_id = request.forms.get('node_id')
         except Exception as e:
             print(e)
             return format_response(400, 'Could not parse delete status from form')
 
         # Try to retrieve the entry from the form.
         entry = request.forms.get('entry')
-        if (entry == None):
+        if (entry == None or node_id == None):
             return format_response(400, 'Form needs to contain entry and node_id')
 
         # Make sure we have the delete_or_modify field retrieved.
