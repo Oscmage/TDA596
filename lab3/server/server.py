@@ -296,7 +296,7 @@ try:
             if delete_or_modify == 0:
                 # Modify and propagate modify to other vessels.
                 board.add(element_id, entry, node_id)
-                payload = {'entry': entry}
+                payload = {'entry': entry, 'node_id': node_id}
                 propagate_to_vessels(MODIFY, element_id, payload)
                 return format_response(200)
 
@@ -304,6 +304,7 @@ try:
             if delete_or_modify == 1:
                 # Dlete and propagate to other vessels.
                 board.delete(element_id, node_id)
+                payload = {'node_id': node_id}
                 propagate_to_vessels(DELETE, element_id)
                 return format_response(200)
         return format_response(400, 'Invalid delete status, should be either 0 or 1')
@@ -316,6 +317,7 @@ try:
         except Exception as e:
             print e
             return format_response(400, 'Element id needs to be an integer')
+
         # ADD or Modify action
         if (action in [ADD, MODIFY]):
             # Try to retrieve entry from propagation
@@ -323,6 +325,7 @@ try:
             try:
                 json_dict = request.json
                 entry = json_dict.get('entry')
+                node_id = json_dict.get('node_id')
 
             except Exception as e:
                 # Can't parse entry from response
@@ -336,6 +339,7 @@ try:
             if (action == ADD):
                 print 'Adding element'
                 board.add(element_id, entry, node_id)
+                print node_id
                 return format_response(200)
             if (action == MODIFY):
                 print 'Modify element'
@@ -344,6 +348,15 @@ try:
 
         # Delete action
         if (action == DELETE):
+            try:
+                json_dict = request.json
+                node_id = json_dict.get('node_id')
+
+            except Exception as e:
+                # Can't parse node_id from response
+                print e
+                return format_response(400, 'Could not retrieve node_id from json')
+
             board.delete(element_id, node_id)
             print 'Delete element'
             return format_response(200)
