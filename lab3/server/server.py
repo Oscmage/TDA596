@@ -312,6 +312,7 @@ try:
     def propagation_received(action, element_id):
         # Try to parse the element_id as an int.
         node_id = None
+        json_dict = request.json
         try:
             element_id = int(element_id)
             node_id = json_dict.get('node_id')
@@ -327,7 +328,6 @@ try:
             # Try to retrieve entry from propagation
             entry = None
             try:
-                json_dict = request.json
                 entry = json_dict.get('entry')
 
             except Exception as e:
