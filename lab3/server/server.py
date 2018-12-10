@@ -27,16 +27,13 @@ class Board:
     def __init__(self):
         self.seq_num = 0
         self.start = time.time()
-        self.total_add = 0
         self.entries = {}
         self.delete_queue = {}
         self.modify_queue = {}
 
     def add(self, entry_id, entry, ip):
-        self.total_add += 1
-        if self.total_add == 80:
-            elapsed = time.time() - self.start
-            print(elapsed)
+        elapsed = time.time() - self.start
+        print(elapsed)
         '''
         Adds a new element to the board and increase the seq num by one. 
         Uses some logic to check if the added element has pening delete or modifies. 
