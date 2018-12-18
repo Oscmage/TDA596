@@ -65,17 +65,17 @@ try:
         global node_id
         pass
 
-    @app.post('/vote/attack/')
+    @app.post('/vote/attack')
     def client_attack_received():
         # todo
         pass
 
-    @app.post('/vote/retreat/')
+    @app.post('/vote/retreat')
     def client_retreat_received():
         # todo
         pass
 
-    @app.post('/vote/byzantine/')
+    @app.post('/vote/byzantine')
     def client_byzantine_received():
         # todo
         pass
