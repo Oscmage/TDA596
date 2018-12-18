@@ -12,14 +12,14 @@ import json
 import argparse
 from threading import Thread
 
-from bottle import Bottle, run, request, template
+from bottle import Bottle, run, request, template, HTTPResponse
 import requests
 # ------------------------------------------------------------------------------------------------------
 try:
     app = Bottle()
-    tot_nodes = 4 # TODO Make this properly
-    status = {} # Step 1, keeps track of votes received, node_id -> vote
-    result_vectors = {} # Step 2, keeps track of vectors received, node_id -> vectors
+    tot_nodes = 4  # TODO Make this properly
+    status = {}  # Step 1, keeps track of votes received, node_id -> vote
+    result_vectors = {}  # Step 2, keeps track of vectors received, node_id -> vectors
     ATTACK = "ATTACK"
     RETREAT = "RETREAT"
     BYZANTINE = "BYZANTINE"
@@ -58,12 +58,12 @@ try:
 
     def propogate_client_vote(decision, node_id):
         path = "/propagate/{}/{}".format(decision, node_id)
-        propagate_to_vessels(path) 
-    
+        propagate_to_vessels(path)
+
     def propogate_result(node_id):
         payload = {'status': status}
         path = "/propagate/result/{}".format(node_id)
-        propagate_to_vessels(path, payload) 
+        propagate_to_vessels(path, payload)
 
     def get_result_vector():
         result_vector = []
@@ -104,8 +104,6 @@ try:
             result = RETREAT
         return result, result_vector
 
-                
-
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
     # ------------------------------------------------------------------------------------------------------
@@ -117,8 +115,6 @@ try:
         global node_id
         return template('server/index.tpl', board_title='Vessel {}'.format(node_id), members_name_string='YOUR NAME')
 
-
-
     @app.get('/vote/result')
     def get_result():
         global node_id
@@ -127,7 +123,7 @@ try:
             return determine_result
 
         # If len (result) == tot_nodes returnera vettigt
-        # Annars returnera att vi väntar 
+        # Annars returnera att vi väntar
 
     @app.post('/vote/attack')
     def client_attack_received():
@@ -147,7 +143,7 @@ try:
     def client_byzantine_received():
         global node_id
         # TODO MAKE UP YOUR MIND
-        status[node_id] = "Something something" 
+        status[node_id] = "Something something"
         propogate_client_vote("Something", node_id)
         return format_response(200)
 
@@ -167,7 +163,6 @@ try:
         status_dict_for_node = json_dict.get('status')
         result_vectors[node_id] = status_dict_for_node
         return format_response(200)
-        
 
     def format_response(status_code, message=''):
         '''
