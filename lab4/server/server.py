@@ -20,6 +20,8 @@ try:
     tot_nodes = 4  # TODO Make this properly
     status = {}  # Step 1, keeps track of votes received, node_id -> vote
     result_vectors = {}  # Step 2, keeps track of vectors received, node_id -> vectors
+    final_vector = None
+    final_result = None
     ATTACK = "ATTACK"
     RETREAT = "RETREAT"
     BYZANTINE = "BYZANTINE"
@@ -71,13 +73,17 @@ try:
         result_vector = []
         attack = None
         retreat = None
+
+        #print(result_vectors)        
+
         # Loop over each position in each node vector.
-        for i in range(0, 4):
+        for i in range(1, tot_nodes + 1):
             # Count for each position in the final vector, need to reset for each position
             attack = 0
             retreat = 0
-            for k, val in result_vectors:
-                if val[i] == ATTACK:
+            for k, val in result_vectors.iteritems():
+                #print(val.get(str(i)))
+                if val.get(str(i)) == ATTACK:
                     attack += 1
                 else:
                     retreat += 1
@@ -119,26 +125,28 @@ try:
 
     @app.get('/vote/result')
     def get_result():
-        global node_id
+        global node_id, final_result, final_vector
         # Have received all other nodes vectors
         if len(result_vectors) == tot_nodes - 1:
-            return determine_result
-
-        # If len (result) == tot_nodes returnera vettigt
-        # Annars returnera att vi väntar
+            if final_result == None and final_vector == None:
+               final_result, final_vector = determine_result()
+            print(final_result)
+            print(final_vector)  
+            return final_result, final_vector   
+        return format_response(200) 
 
     @app.post('/vote/attack')
     def client_attack_received():
         global node_id
-        status[node_id] = ATTACK
         propogate_client_vote(ATTACK, node_id)
+        status[node_id] = ATTACK
         return format_response(200)
 
     @app.post('/vote/retreat')
     def client_retreat_received():
         global node_id
-        status[node_id] = RETREAT
         propogate_client_vote(RETREAT, node_id)
+        status[node_id] = RETREAT
         return format_response(200)
 
     @app.post('/vote/byzantine')
@@ -154,6 +162,8 @@ try:
     def propagation_result_received(node_id):
         json_dict = request.json
         status_dict_for_node = json_dict.get('status')
+        #print(type(status_dict_for_node))
+        #print(status_dict_for_node)
         result_vectors[node_id] = status_dict_for_node
         return format_response(200)
 
@@ -164,7 +174,7 @@ try:
         global node_id
         status[external_node_id] = vote
         if len(status) == tot_nodes:
-            print(status)
+            print("I SENT My SHIT TO OTHER NODES")
             propogate_result(node_id)
         return format_response(200)
 
