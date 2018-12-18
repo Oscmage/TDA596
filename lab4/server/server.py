@@ -52,9 +52,10 @@ try:
 
         for vessel_id, vessel_ip in vessel_list.items():
             if int(vessel_id) != node_id:  # don't propagate to yourself
+                # Start a thread for each propagation
                 t = Thread(target=contact_vessel, args=(
                         vessel_ip, path, payload, req))
-                t.daemon = True     
+                t.daemon = True
                 t.start()
 
     def propogate_client_vote(decision, node_id):
@@ -148,6 +149,15 @@ try:
         propogate_client_vote("Something", node_id)
         return format_response(200)
 
+    #Propagation step 2
+    @app.post('/propagate/result/<node_id>')
+    def propagation_result_received(node_id):
+        json_dict = request.json
+        status_dict_for_node = json_dict.get('status')
+        result_vectors[node_id] = status_dict_for_node
+        return format_response(200)
+
+
     # Propagation step 1
     @app.post('/propagate/<vote>/<external_node_id>')
     def propagation_received(vote, external_node_id):
@@ -158,14 +168,7 @@ try:
             propogate_result(node_id)
         return format_response(200)
 
-    # Propagation step 2
-    @app.post('/propagate/result/<node_id>')
-    def propagation_received(node_id):
-        json_dict = request.json
-        status_dict_for_node = json_dict.get('status')
-        result_vectors[node_id] = status_dict_for_node
-        return format_response(200)
-
+ 
     def format_response(status_code, message=''):
         '''
         Simple function for formatting response code.
