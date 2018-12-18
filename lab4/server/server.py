@@ -52,9 +52,10 @@ try:
 
         for vessel_id, vessel_ip in vessel_list.items():
             if int(vessel_id) != node_id:  # don't propagate to yourself
-                success = contact_vessel(vessel_ip, path, payload, req)
-                if not success:
-                    print "\n\nCould not contact vessel {}\n\n".format(vessel_id)
+                t = Thread(target=contact_vessel, args=(
+                        vessel_ip, path, payload, req))
+                t.daemon = True     
+                t.start()
 
     def propogate_client_vote(decision, node_id):
         path = "/propagate/{}/{}".format(decision, node_id)
@@ -153,6 +154,7 @@ try:
         global node_id
         status[external_node_id] = vote
         if len(status) == tot_nodes:
+            print(status)
             propogate_result(node_id)
         return format_response(200)
 
