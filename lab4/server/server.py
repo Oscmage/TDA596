@@ -112,6 +112,10 @@ try:
             result = RETREAT
         return result, result_vector
 
+    def check_for_step_two():
+        if len(status) == tot_nodes:
+            propogate_result(node_id)
+
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
     # ------------------------------------------------------------------------------------------------------
@@ -132,14 +136,17 @@ try:
                final_result, final_vector = determine_result()
             print(final_result)
             print(final_vector)  
-            return final_result, final_vector   
-        return format_response(200) 
+            #return final_result, final_vector
+        pass
 
     @app.post('/vote/attack')
     def client_attack_received():
         global node_id
         propogate_client_vote(ATTACK, node_id)
         status[node_id] = ATTACK
+        if len(status) == tot_nodes:
+            print("I SENT My SHIT TO OTHER NODES")
+            propogate_result(node_id)
         return format_response(200)
 
     @app.post('/vote/retreat')
@@ -147,6 +154,7 @@ try:
         global node_id
         propogate_client_vote(RETREAT, node_id)
         status[node_id] = RETREAT
+        check_for_step_two()
         return format_response(200)
 
     @app.post('/vote/byzantine')
@@ -155,6 +163,7 @@ try:
         # TODO MAKE UP YOUR MIND
         status[node_id] = "Something something"
         propogate_client_vote("Something", node_id)
+        check_for_step_two()
         return format_response(200)
 
     #Propagation step 2
@@ -173,9 +182,8 @@ try:
     def propagation_received(vote, external_node_id):
         global node_id
         status[external_node_id] = vote
-        if len(status) == tot_nodes:
-            print("I SENT My SHIT TO OTHER NODES")
-            propogate_result(node_id)
+        print(len(status))
+        check_for_step_two()
         return format_response(200)
 
  
