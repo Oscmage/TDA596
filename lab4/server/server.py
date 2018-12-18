@@ -123,7 +123,7 @@ try:
     def get_result():
         global node_id
         # Have received all other nodes vectors
-        if len(result) == tot_nodes - 1:
+        if len(result_vectors) == tot_nodes - 1:
             return determine_result
 
         # If len (result) == tot_nodes returnera vettigt
