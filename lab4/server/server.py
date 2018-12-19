@@ -126,6 +126,7 @@ try:
             attack = 0
             retreat = 0
             for k, val in result_vectors.iteritems():
+                # If we are looking to decide for a node, ignore what that node said about themselves and pick the value we received
                 if int(k) == i:
                     if status.get(str(i)) == ATTACK:
                         attack += 1
@@ -192,9 +193,7 @@ try:
         if len(result_vectors) == tot_nodes - 1:
             if final_result == None and final_vector == None:
                final_result, final_vector = determine_result()
-            print(final_result)
-            print(final_vector)  
-            #return final_result, final_vector
+            return template('server/result_template.tpl', result=final_result, result_vector=final_vector)
         pass
 
     @app.post('/vote/attack')
