@@ -10,6 +10,7 @@ import sys
 import time
 import json
 import argparse
+from byzantine_behavior import * 
 from threading import Thread
 
 from bottle import Bottle, run, request, template, HTTPResponse
@@ -22,6 +23,7 @@ try:
     result_vectors = {}  # Step 2, keeps track of vectors received, node_id -> vectors
     final_vector = None
     final_result = None
+    byzantine = False
     ATTACK = "ATTACK"
     RETREAT = "RETREAT"
     BYZANTINE = "BYZANTINE"
@@ -69,6 +71,47 @@ try:
         path = "/propagate/result/{}".format(node_id)
         propagate_to_vessels(path, payload)
 
+    def convert_to_attack_or_retreat(val):
+        if val:
+            return ATTACK
+        else:
+            return RETREAT
+
+    def propogate_byzantine_step_one(arr, node_id):
+        i = 0
+        for vessel_id, vessel_ip in vessel_list.items():
+            if int(vessel_id) != node_id:  # don't propagate to yourself
+                # Start a thread for each propagation
+                path = "/propagate/{}/{}".format(convert_to_attack_or_retreat(arr[i]), node_id)  
+                print (path)
+                t = Thread(target=contact_vessel, args=(
+                        vessel_ip, path))
+                t.daemon = True
+                t.start()
+                i += 1
+
+    def dict_from_arr(arr):
+        i = 0
+        byzantine_dict = {}
+        for vessel_id, vessel_ip in vessel_list.items():
+            byzantine_dict[vessel_id] = convert_to_attack_or_retreat(arr[i])
+            i += 1
+        return byzantine_dict
+
+    def propogate_byzantine_step_two(arr_of_arr, node_id):
+        i = 0
+        for vessel_id, vessel_ip in vessel_list.items():
+            if int(vessel_id) != node_id:
+                byzantine_dict = dict_from_arr(arr_of_arr[i]) 
+                payload = {'status': byzantine_dict}
+                path = "/propagate/result/{}".format(node_id)
+                t = Thread(target=contact_vessel, args=(
+                        vessel_ip, path, payload))
+                t.daemon = True
+                t.start()
+                i += 1
+
+
     def get_result_vector():
         result_vector = []
         attack = None
@@ -113,8 +156,14 @@ try:
         return result, result_vector
 
     def check_for_step_two():
-        if len(status) == tot_nodes:
+        global node_id
+        if byzantine and len(status) == tot_nodes:
+            res = compute_byzantine_vote_round2(tot_nodes - 1, tot_nodes, True)
+            propogate_byzantine_step_two(res, node_id)
+        if len(status) == tot_nodes and not byzantine:
             propogate_result(node_id)
+        
+
 
     # ------------------------------------------------------------------------------------------------------
     # ROUTES
@@ -144,9 +193,7 @@ try:
         global node_id
         propogate_client_vote(ATTACK, node_id)
         status[node_id] = ATTACK
-        if len(status) == tot_nodes:
-            print("I SENT My SHIT TO OTHER NODES")
-            propogate_result(node_id)
+        check_for_step_two()
         return format_response(200)
 
     @app.post('/vote/retreat')
@@ -159,10 +206,11 @@ try:
 
     @app.post('/vote/byzantine')
     def client_byzantine_received():
-        global node_id
-        # TODO MAKE UP YOUR MIND
-        status[node_id] = "Something something"
-        propogate_client_vote("Something", node_id)
+        global node_id, byzantine
+        res = compute_byzantine_vote_round1(tot_nodes - 1, tot_nodes, True)
+        byzantine = True
+        status[node_id] = "Byzantine"
+        propogate_byzantine_step_one(res, node_id)
         check_for_step_two()
         return format_response(200)
 
