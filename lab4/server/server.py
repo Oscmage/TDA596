@@ -69,6 +69,8 @@ try:
     def propogate_result(node_id):
         payload = {'status': status}
         path = "/propagate/result/{}".format(node_id)
+        print("Sent this to others")
+        print(status)
         propagate_to_vessels(path, payload)
 
     def convert_to_attack_or_retreat(val):
@@ -83,7 +85,6 @@ try:
             if int(vessel_id) != node_id:  # don't propagate to yourself
                 # Start a thread for each propagation
                 path = "/propagate/{}/{}".format(convert_to_attack_or_retreat(arr[i]), node_id)  
-                print (path)
                 t = Thread(target=contact_vessel, args=(
                         vessel_ip, path))
                 t.daemon = True
@@ -118,18 +119,24 @@ try:
         retreat = None
 
         #print(result_vectors)        
-
+        print(result_vectors)
         # Loop over each position in each node vector.
         for i in range(1, tot_nodes + 1):
             # Count for each position in the final vector, need to reset for each position
             attack = 0
             retreat = 0
             for k, val in result_vectors.iteritems():
-                #print(val.get(str(i)))
-                if val.get(str(i)) == ATTACK:
-                    attack += 1
-                else:
-                    retreat += 1
+                if int(k) == i:
+                    if status.get(str(i)) == ATTACK:
+                        attack += 1
+                    if status.get(str(i)) == RETREAT:
+                        retreat += 1
+                else:   
+                    #print(val.get(str(i)))
+                    if val.get(str(i)) == ATTACK:
+                        attack += 1
+                    if val.get(str(i)) == RETREAT:
+                        retreat += 1
             # Determine result for each position in the vector.
             if attack >= retreat:
                 result_vector.append(ATTACK)
@@ -153,6 +160,8 @@ try:
             result = ATTACK
         else:
             result = RETREAT
+        if byzantine:
+            print("I AM BYZANTINE")
         return result, result_vector
 
     def check_for_step_two():
