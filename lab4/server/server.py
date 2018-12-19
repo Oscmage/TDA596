@@ -69,8 +69,6 @@ try:
     def propogate_result(node_id):
         payload = {'status': status}
         path = "/propagate/result/{}".format(node_id)
-        print("Sent this to others")
-        print(status)
         propagate_to_vessels(path, payload)
 
     def convert_to_attack_or_retreat(val):
@@ -118,8 +116,6 @@ try:
         attack = None
         retreat = None
 
-        #print(result_vectors)        
-        print(result_vectors)
         # Loop over each position in each node vector.
         for i in range(1, tot_nodes + 1):
             # Count for each position in the final vector, need to reset for each position
@@ -132,8 +128,8 @@ try:
                         attack += 1
                     if status.get(str(i)) == RETREAT:
                         retreat += 1
-                else:   
-                    #print(val.get(str(i)))
+                else:  
+                # We're not a node talking about himself or herself. 
                     if val.get(str(i)) == ATTACK:
                         attack += 1
                     if val.get(str(i)) == RETREAT:
@@ -161,8 +157,6 @@ try:
             result = ATTACK
         else:
             result = RETREAT
-        if byzantine:
-            print("I AM BYZANTINE")
         return result, result_vector
 
     def check_for_step_two():
@@ -217,7 +211,7 @@ try:
         global node_id, byzantine
         res = compute_byzantine_vote_round1(tot_nodes - 1, tot_nodes, True)
         byzantine = True
-        status[node_id] = "Byzantine"
+        status[node_id] = BYZANTINE
         propogate_byzantine_step_one(res, node_id)
         check_for_step_two()
         return format_response(200)
@@ -227,8 +221,6 @@ try:
     def propagation_result_received(node_id):
         json_dict = request.json
         status_dict_for_node = json_dict.get('status')
-        #print(type(status_dict_for_node))
-        #print(status_dict_for_node)
         result_vectors[node_id] = status_dict_for_node
         return format_response(200)
 
@@ -238,7 +230,6 @@ try:
     def propagation_received(vote, external_node_id):
         global node_id
         status[external_node_id] = vote
-        print(len(status))
         check_for_step_two()
         return format_response(200)
 
